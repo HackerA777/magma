@@ -1,62 +1,111 @@
-import tables
+import numpy as np
+from tables import Pi
 
 
-def sum_mod_2(block_a, block_b, block_c):
-    for i in range(len(block_a)):
-        block_c[i] = block_a[i] ^ block_b[i]
+def iter_keys(keys):
+    keys = np.fromstring(keys, np.uint8)
+    round_keys = [keys[4*i:i*4+4] for i in range(8)]
+    return round_keys
 
 
-def sum_mod_32(block_a, block_b, bloc_c):
-    internal = 0
-    for i in range(0, len(block_a)):
-        i = i * (-1) - 1
-        internal = block_a[i] + block_b[i] + (internal >> 8)
-        bloc_c[i] = internal
+def add(a: np.uint8, b: np.uint8, c: np.uint8):
+    for i in range(4):
+        c[i] = a[i] ^ b[i]
 
 
-import array
+def add_32(a: np.uint8, b: np.uint8, c: np.uint8):
+    internal = np.uint8(0)
+    # internal = internal.view(np.uint32)
+    for i in range(4):
+        internal = a[i] + b[i] + (internal >> 8)
+        c[i] = internal & 0xFF
 
-import random
-import string
 
-char = 'abcdefgh'
+def magma_T(in_data: np.uint8, out_data: np.uint8):
+    for i in range(4):
+        first_part_byte = (in_data[i] & 0x0F)
+        second_part_byte = (in_data[i] & 0xF0) >> 4
+        first_part_byte = Pi[i * 2][first_part_byte]
+        second_part_byte = Pi[i * 2 + 1][second_part_byte]
+        out_data[i] = (first_part_byte << 4) | second_part_byte
 
-block_a_1 = bytearray()
-block_a_0 = bytearray()
-block_b_1 = bytearray()
-block_b_0 = bytearray()
 
-for i in range(int(len(char)/2)):
-    block_a_1 += char[i].encode('utf16')
-    block_a_0 += char[-i-1].encode('utf16')
-block_a_0 = block_a_0[::-1]
-print("block_a_1: ", bytearray(block_a_1))
-print("block_a_0: ", bytearray(block_a_0))
-block_b_1 = block_a_0
+def magma_g(round_key, block, out_data):
+    internal = np.array([0, 0, 0, 0], dtype=np.uint8)
+    # out_data_32 = np.uint32(0)
+    add_32(block, round_key, internal)
+    magma_T(internal, internal)
+    out_data_32 = internal[3]
+    out_data_32 = (out_data_32 << 8) + internal[2]
+    out_data_32 = (out_data_32 << 8) + internal[1]
+    out_data_32 = (out_data_32 << 8) + internal[0]
+    out_data_32 = (out_data_32 << 11) | (out_data_32 >> 21)
+    out_data[0] = out_data_32
+    out_data[1] = out_data_32 >> 8
+    out_data[2] = out_data_32 >> 16
+    out_data[3] = out_data_32 >> 24
 
-# keys = random.choices(string.ascii_letters, k=26) + random.choices(string.digits, k=6)
-# random.shuffle(keys)
-keys = ['J', 'r', 'i', 'g', 'I', 'C', 'Q', 'o', '9', 'R', 'S', 'q', 'R', 'm', 'W', '6', '6', 'k', 'X', 'L', 't', 'G', 'Q', 'A', '6', 'D', '6', 'g', 'v', '5', 'P', 'Y']
-print(f'Keys: {keys}')
-key = bytearray()
-for k in keys:
-    k = str(k)
-    key += k.encode('utf16')
-key = bytearray(key)
-print(f'Key: {type(key)}')
-result = key.decode('utf16')
-print(f'result: {result}')
-iter_key = bytearray()
-# for i in range(32):
-#     iter_key += str(i).encode('utf16')
-iter_key = [str(i).encode('utf16') for i in range(32)]
-print(f'iter_key: {type(iter_key)}')
-iter_key[7] = key[0:16]
-iter_key[6] = key[0:16+16]
-iter_key[5] = key[0:16+32]
-iter_key[4] = key[0:16+48]
-iter_key[3] = key[0:16+64]
-iter_key[2] = key[0:16+80]
-iter_key[1] = key[0:16+96]
-iter_key[0] = key[0:16+112]
-print(iter_key[0].decode('utf16'))
+
+def magma_G(round_key, block, out_block):
+    l = block[:4]
+    r = block[4:]
+
+    t = np.copy(r).view(np.uint8)
+    magma_g(round_key, l, t)
+    add(r, t, t)
+    for i in range(4):
+        r[i] = l[i]
+        l[i] = t[i]
+    for i in range(4):
+        out_block[i] = l[i]
+        out_block[4+i] = r[i]
+
+
+def magma_G_Last(round_key, block, out_block):
+    l = block[:4]
+    r = block[4:]
+
+    t = np.copy(r).view(np.uint8)
+    magma_g(round_key, l, t)
+    add(r, t, t)
+    for i in range(4):
+        r[i] = t[i]
+    for i in range(4):
+        out_block[i] = l[i]
+        out_block[4 + i] = r[i]
+
+
+def encrypt(round_keys, block: np.uint8, out_block: np.uint8):
+    magma_G(round_keys[0], block, out_block)
+    for i in range(1, 31):
+        magma_G(round_keys[i], out_block, out_block)
+    magma_G_Last(round_keys[31], out_block, out_block)
+
+
+def decrypt(round_keys, block: np.uint8, out_block: np.uint8):
+    magma_G(round_keys[31], block, out_block)
+    for i in range(30, 0, -1):
+        magma_G(round_keys[i], out_block, out_block)
+    magma_G_Last(round_keys[0], out_block, out_block)
+
+
+def main():
+    key = ('1'*4+'2'*4+'3'*4+'4'*4)*2
+    block  =  '1'*4+'2'*4
+    block = np.fromstring(block, np.uint8)
+    round_keys = iter_keys(key)
+    encryption_keys = round_keys * 3 + round_keys[::-1]
+    decryption_keys = encryption_keys[::-1]
+    encrypt_block = block
+    decrypt_block = block
+    print(f'block: {block}')
+    encrypt(encryption_keys, block, encrypt_block)
+    print(f'encrypt: {encrypt_block}')
+    # encrypt(decryption_keys, encrypt_block, decrypt_block)
+    # print(f'decrypt: {decrypt_block}')
+    decrypt(encryption_keys, encrypt_block, decrypt_block)
+    print(f'decrypt: {decrypt_block}')
+
+
+if __name__ == '__main__':
+    main()
