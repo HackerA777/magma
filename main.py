@@ -1,4 +1,5 @@
 import numpy as np
+from time import perf_counter
 from tables import Pi
 
 
@@ -89,22 +90,54 @@ def decrypt(round_keys, block: np.uint8, out_block: np.uint8):
     magma_G_Last(round_keys[0], out_block, out_block)
 
 
+def check_len_main_block(block: str):
+    for i in range(0, len(block), 8):
+        # print(f'block: {block[i:i+8]}')
+        if len(block[i:i+8]) < 8:
+            while(len(block[i:i+8]) != 8):
+                block += '0'
+                # print(block[i:i+8])
+    block = np.fromstring(block, np.uint8)
+    return block
+
+
 def main():
     key = ('1'*4+'2'*4+'3'*4+'4'*4)*2
-    block  =  '1'*4+'2'*4
-    block = np.fromstring(block, np.uint8)
+    # n = 55 000 000
+    # main_block = ('1'*4+'2'*4+'3'*4+'4'*4+'5'*4) * 1
+    main_block = 'abcdefgh' * 225000
+    # block = np.fromstring(block, np.uint8)
     round_keys = iter_keys(key)
     encryption_keys = round_keys * 3 + round_keys[::-1]
     decryption_keys = encryption_keys[::-1]
+    block = check_len_main_block(main_block)
+    print(block)
+    print(f'Size: {block.size}')
     encrypt_block = block
     decrypt_block = block
-    print(f'block: {block}')
-    encrypt(encryption_keys, block, encrypt_block)
+    print("Start encrypt")
+    start = perf_counter()
+    for i in range(0, len(block), 8):
+        encrypt(encryption_keys, block[i:i+8], encrypt_block[i:i+8])
     print(f'encrypt: {encrypt_block}')
     # encrypt(decryption_keys, encrypt_block, decrypt_block)
     # print(f'decrypt: {decrypt_block}')
-    decrypt(encryption_keys, encrypt_block, decrypt_block)
-    print(f'decrypt: {decrypt_block}')
+        # decrypt(encryption_keys, encrypt_block[i:i+8], decrypt_block[i:i+8])
+        # print(f'decrypt: {decrypt_block}')
+    end = perf_counter()
+    print(f'Time encrypt: {end - start}')
+    start = perf_counter()
+    for i in range(0, len(block), 8):
+        decrypt(encryption_keys, encrypt_block[i:i+8], decrypt_block[i:i+8])
+    decrypt_str = [chr(decrypt_block[0])]
+    end = perf_counter()
+    print(f'Time decrypt: {end - start}')
+    print(decrypt_block)
+    for i in range(1, len(main_block)):
+        decrypt_str += chr(decrypt_block[i])
+    decrypt_str = ''.join(decrypt_str)
+    if main_block == decrypt_str:
+        print("Done!")
 
 
 if __name__ == '__main__':
