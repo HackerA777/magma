@@ -64,7 +64,7 @@ def magma_G_Last(round_key, block, out_block, t):
     out_block[4:] = r
 
 
-@numba.njit(numba.void(numba.uint8[:,:], numba.uint8[:], numba.uint8[:]))
+@numba.njit(numba.void(numba.uint8[:, :], numba.uint8[:], numba.uint8[:]))
 def encrypt(round_keys, block: np.uint8, out_block: np.uint8):
     t = np.empty(4, np.uint8)
     magma_G(round_keys[0], block, out_block, t)
@@ -73,13 +73,13 @@ def encrypt(round_keys, block: np.uint8, out_block: np.uint8):
     magma_G_Last(round_keys[31], out_block, out_block, t)
 
 
-@numba.njit(numba.void(numba.uint8[:,:], numba.uint8[:], numba.uint8[:]))
+@numba.njit(numba.void(numba.uint8[:, :], numba.uint8[:], numba.uint8[:]))
 def decrypt(round_keys, block: np.uint8, out_block: np.uint8):
     t = np.empty(4, np.uint8)
-    magma_G(round_keys[31], block, out_block,t)
+    magma_G(round_keys[31], block, out_block, t)
     for i in range(30, 0, -1):
-        magma_G(round_keys[i], out_block, out_block,t)
-    magma_G_Last(round_keys[0], out_block, out_block,t)
+        magma_G(round_keys[i], out_block, out_block, t)
+    magma_G_Last(round_keys[0], out_block, out_block, t)
 
 
 def check_len_main_block(block: str):
@@ -90,16 +90,16 @@ def check_len_main_block(block: str):
     return np.fromstring(block, np.uint8)
 
 
-@numba.njit(numba.void(numba.uint8[:, :], numba.uint8[:], numba.uint8[:]))
+@numba.njit(numba.void(numba.uint8[:, :], numba.uint8[:], numba.uint8[:]), parallel=True)
 def main_encrypt(encryption_keys, block, encrypt_block):
-    for i in range(0, len(block), 8):
-        encrypt(encryption_keys, block[i:i + 8], encrypt_block[i:i + 8])
+    for i in numba.prange(0, int(len(block)/8)):
+        encrypt(encryption_keys, block[i*8:i*8 + 8], encrypt_block[i*8:i*8 + 8])
 
 
-@numba.njit(numba.void(numba.uint8[:, :], numba.uint8[:], numba.uint8[:]))
+@numba.njit(numba.void(numba.uint8[:, :], numba.uint8[:], numba.uint8[:]), parallel=True)
 def main_decrypt(encryption_keys, encrypt_block, decrypt_block):
-    for i in range(0, len(encrypt_block), 8):
-        decrypt(encryption_keys, encrypt_block[i:i+8], decrypt_block[i:i+8])
+    for i in numba.prange(0, int(len(encrypt_block)/8)):
+        decrypt(encryption_keys, encrypt_block[i*8:i*8+8], decrypt_block[i*8:i*8+8])
 
 
 def main():
@@ -123,11 +123,11 @@ def main():
     main_encrypt(encryption_keys, block, encrypt_block)
     end = perf_counter()
     print(f'Encrypt_block: {encrypt_block}')
-    print(f'Time encrypt: {end - start}')
+    print(f'Time encrypt: {end - start} sec')
     start = perf_counter()
     main_decrypt(encryption_keys, encrypt_block, decrypt_block)
     end = perf_counter()
-    print(f'Time decrypt: {end - start}')
+    print(f'Time decrypt: {end - start} sec')
     print(decrypt_block)
     decrypt_str = [chr(decrypt_block[0])]
     for i in range(1, len(main_block)):
