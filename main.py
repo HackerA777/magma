@@ -115,7 +115,7 @@ def main():
     # decryption_keys = encryption_keys[::-1]
     # block = check_len_main_block(main_block)
     block = np.array([16, 50, 84, 118, 152, 186, 220, 254]*131072, dtype=np.uint8)
-    print(f'Size = {block.size/1024}Mb')
+    print(f'Size = {block.size/1048576}Mb')
     encrypt_block = block
     decrypt_block = block
     print("Start encrypt")
