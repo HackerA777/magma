@@ -32,10 +32,3 @@ def T(i: np.int32, val: np.uint8):
     l = Pi[i*2, l]
     h = Pi[i*2+1, h]
     return (h << 4) | l
-    # for i in range(4):
-    #     first_part_byte = (in_data[i] & 0x0F)
-    #     second_part_byte = (in_data[i] & 0xF0) >> 4
-    #     first_part_byte = Pi[i * 2][first_part_byte]
-    #     second_part_byte = Pi[i * 2 + 1][second_part_byte]
-    #     out_data[i] = (first_part_byte << 4) | second_part_byte
-
