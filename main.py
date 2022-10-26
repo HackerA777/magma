@@ -20,7 +20,7 @@ def add_32(a: np.uint8, b: np.uint8, c: np.uint8):
     a = a.view(np.uint32)
     b = b.view(np.uint32)
     c = c.view(np.uint32)
-    c[...] = a+b
+    c[...] = a + b
 
 
 @numba.njit(numba.void(numba.uint8[:], numba.uint8[:]))
@@ -104,10 +104,9 @@ def main_decrypt(encryption_keys, encrypt_block, decrypt_block):
 
 def main():
     # key = ('1'*4+'2'*4+'3'*4+'4'*4)*2
-    key = np.array([255, 254, 253, 252, 251, 250, 249, 248, 247, 246, 245, 244, 243, 242, 241, 240, 0, 17, 34, 51, 68,
-                    85, 102, 119, 136, 153, 170, 187, 204, 221, 238, 255], dtype=np.uint8)
+    key = np.array([204, 221, 238, 255, 136, 153, 170, 187, 68,  85, 102, 119, 0, 17, 34, 51, 243, 242, 241, 240, 247,
+                    246, 245, 244, 251, 250, 249, 248, 255, 254, 253, 252], dtype=np.uint8)
     # n = 55 000 000
-    # main_block = ('1'*4+'2'*4+'3'*4+'4'*4+'5'*4) * 1
     # main_block = 'abcdefgh' * 1
     main_block = "2TvºÜþ"
     round_keys = iter_keys(key)
@@ -115,16 +114,15 @@ def main():
     encryption_keys = np.array(encryption_keys, dtype=np.uint8)
     # decryption_keys = encryption_keys[::-1]
     # block = check_len_main_block(main_block)
-    block = np.array([16, 50, 84, 118, 152, 186, 220, 254], dtype=np.uint8)
-    print(block)
-    # print(f'Size: {block.size}')
+    block = np.array([16, 50, 84, 118, 152, 186, 220, 254]*131072, dtype=np.uint8)
+    print(f'Size = {block.size/1024}Mb')
     encrypt_block = block
     decrypt_block = block
     print("Start encrypt")
     start = perf_counter()
     main_encrypt(encryption_keys, block, encrypt_block)
     end = perf_counter()
-    print(f'encrypt_block: {encrypt_block}')
+    print(f'Encrypt_block: {encrypt_block}')
     print(f'Time encrypt: {end - start}')
     start = perf_counter()
     main_decrypt(encryption_keys, encrypt_block, decrypt_block)
@@ -136,7 +134,7 @@ def main():
         decrypt_str += chr(decrypt_block[i])
     decrypt_str = ''.join(decrypt_str)
     if main_block == decrypt_str:
-        print("Done!")
+        print("Successful!")
 
 
 if __name__ == '__main__':
