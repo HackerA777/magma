@@ -4,18 +4,29 @@ from tables import T
 import numba
 
 
+def print_size(size):
+    if size/1024 < 1.0:
+        print(f'Size: {size}b')
+    elif size/1024**2 < 1.0:
+        print(f'Size: {size/1024}Kb')
+    elif size/1024**3 < 1.0:
+        print(f'Size: {size/1024**2}Mb')
+    elif size/1024**4 < 1.0:
+        print(f'Size: {size/1024**3}Gb')
+
+
 def iter_keys(keys):
     # keys = np.fromstring(keys, np.uint8)
     round_keys = [keys[4*i:i*4+4] for i in range(8)]
     return round_keys
 
 
-@numba.njit()
-def add(a: np.uint8, b: np.uint8, c: np.uint8):
+@numba.njit(numba.void(numba.uint8[:], numba.uint8[:], numba.uint8[:]), nogil=True, fastmath=True)
+def xor(a: np.uint8, b: np.uint8, c: np.uint8):
     c[...] = a ^ b
 
 
-@numba.njit()
+@numba.njit(numba.void(numba.uint8[:], numba.uint8[:], numba.uint8[:]), nogil=True, fastmath=True)
 def add_32(a: np.uint8, b: np.uint8, c: np.uint8):
     a = a.view(np.uint32)
     b = b.view(np.uint32)
@@ -23,7 +34,7 @@ def add_32(a: np.uint8, b: np.uint8, c: np.uint8):
     c[...] = a + b
 
 
-@numba.njit(numba.void(numba.uint8[:], numba.uint8[:]))
+@numba.njit(numba.void(numba.uint8[:], numba.uint8[:]), nogil=True)
 def magma_T(in_data: np.uint8, out_data: np.uint8):
     out_data[0] = T(0, in_data[0])
     out_data[1] = T(1, in_data[1])
@@ -31,7 +42,7 @@ def magma_T(in_data: np.uint8, out_data: np.uint8):
     out_data[3] = T(3, in_data[3])
 
 
-@numba.njit(numba.void(numba.uint8[:], numba.uint8[:], numba.uint8[:]))
+@numba.njit(numba.void(numba.uint8[:], numba.uint8[:], numba.uint8[:]), nogil=True)
 def magma_g(round_key, block, internal):
     add_32(block, round_key, internal)
     magma_T(internal, internal)
@@ -39,32 +50,32 @@ def magma_g(round_key, block, internal):
     out_data_32[0] = (out_data_32[0] << 11) | (out_data_32[0] >> 21)
 
 
-@numba.njit(numba.void(numba.uint8[:], numba.uint8[:], numba.uint8[:], numba.uint8[:]))
+@numba.njit(numba.void(numba.uint8[:], numba.uint8[:], numba.uint8[:], numba.uint8[:]), nogil=True)
 def magma_G(round_key, block, out_block, t):
     l = block[:4]
     r = block[4:]
     t[...] = r
     magma_g(round_key, l, t)
-    add(r, t, t)
+    xor(r, t, t)
     r[...] = l
     l[...] = t
     out_block[:4] = l
     out_block[4:] = r
 
 
-@numba.njit(numba.void(numba.uint8[:], numba.uint8[:], numba.uint8[:], numba.uint8[:]))
+@numba.njit(numba.void(numba.uint8[:], numba.uint8[:], numba.uint8[:], numba.uint8[:]), nogil=True)
 def magma_G_Last(round_key, block, out_block, t):
     l = block[:4]
     r = block[4:]
     t[...] = r
     magma_g(round_key, l, t)
-    add(r, t, t)
+    xor(r, t, t)
     r[...] = t
     out_block[:4] = l
     out_block[4:] = r
 
 
-@numba.njit(numba.void(numba.uint8[:, :], numba.uint8[:], numba.uint8[:]))
+@numba.njit(numba.void(numba.uint8[:, :], numba.uint8[:], numba.uint8[:]), nogil=True)
 def encrypt(round_keys, block: np.uint8, out_block: np.uint8):
     t = np.empty(4, np.uint8)
     magma_G(round_keys[0], block, out_block, t)
@@ -73,7 +84,7 @@ def encrypt(round_keys, block: np.uint8, out_block: np.uint8):
     magma_G_Last(round_keys[31], out_block, out_block, t)
 
 
-@numba.njit(numba.void(numba.uint8[:, :], numba.uint8[:], numba.uint8[:]))
+@numba.njit(numba.void(numba.uint8[:, :], numba.uint8[:], numba.uint8[:]), nogil=True)
 def decrypt(round_keys, block: np.uint8, out_block: np.uint8):
     t = np.empty(4, np.uint8)
     magma_G(round_keys[31], block, out_block, t)
@@ -82,23 +93,24 @@ def decrypt(round_keys, block: np.uint8, out_block: np.uint8):
     magma_G_Last(round_keys[0], out_block, out_block, t)
 
 
+@numba.njit(parallel=True)
 def check_len_main_block(block: str):
-    for i in range(0, len(block), 8):
-        if len(block[i:i+8]) < 8:
+    for i in numba.prange(0, len(block)):
+        if len(block[i*8:i*8+8]) < 8:
             while len(block[i:i+8]) != 8:
                 block += '0'
     return np.fromstring(block, np.uint8)
 
 
-@numba.njit(numba.void(numba.uint8[:, :], numba.uint8[:], numba.uint8[:]), parallel=True)
+@numba.njit(numba.void(numba.uint8[:, :], numba.uint8[:], numba.uint8[:]), parallel=True, nogil=True)
 def main_encrypt(encryption_keys, block, encrypt_block):
-    for i in numba.prange(0, int(len(block)/8)):
+    for i in numba.prange(0, len(block)//8):
         encrypt(encryption_keys, block[i*8:i*8 + 8], encrypt_block[i*8:i*8 + 8])
 
 
-@numba.njit(numba.void(numba.uint8[:, :], numba.uint8[:], numba.uint8[:]), parallel=True)
+@numba.njit(numba.void(numba.uint8[:, :], numba.uint8[:], numba.uint8[:]), parallel=True, nogil=True)
 def main_decrypt(encryption_keys, encrypt_block, decrypt_block):
-    for i in numba.prange(0, int(len(encrypt_block)/8)):
+    for i in numba.prange(0, len(encrypt_block)//8):
         decrypt(encryption_keys, encrypt_block[i*8:i*8+8], decrypt_block[i*8:i*8+8])
 
 
@@ -115,20 +127,20 @@ def main():
     # decryption_keys = encryption_keys[::-1]
     # block = check_len_main_block(main_block)
     block = np.array([16, 50, 84, 118, 152, 186, 220, 254]*131072, dtype=np.uint8)
-    print(f'Size = {block.size/1048576}Mb')
+    print_size(block.size)
     encrypt_block = block
     decrypt_block = block
     print("Start encrypt")
     start = perf_counter()
     main_encrypt(encryption_keys, block, encrypt_block)
     end = perf_counter()
-    print(f'Encrypt_block: {encrypt_block}')
+    print(f'Encrypt_block: {encrypt_block[:8]}')
     print(f'Time encrypt: {end - start} sec')
+    print("Start decrypt")
     start = perf_counter()
     main_decrypt(encryption_keys, encrypt_block, decrypt_block)
     end = perf_counter()
     print(f'Time decrypt: {end - start} sec')
-    print(decrypt_block)
     decrypt_str = [chr(decrypt_block[0])]
     for i in range(1, len(main_block)):
         decrypt_str += chr(decrypt_block[i])
