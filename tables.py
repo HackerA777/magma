@@ -25,7 +25,7 @@ Pi = np.array([
 ], np.uint8)
 
 
-@numba.njit(numba.uint8(numba.int32, numba.uint8), nogil=True)
+@numba.njit(numba.uint8(numba.int32, numba.uint8), nogil=True, fastmath=True)
 def T(i: np.int32, val: np.uint8):
     l = val & 0x0f
     h = (val & 0xf0) >> 4

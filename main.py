@@ -8,9 +8,9 @@ def print_size(size):
     if size/1024 < 1.0:
         print(f'Size: {size}b')
     elif size/1024**2 < 1.0:
-        print(f'Size: {size/1024}Kb')
+        print(f'Size: {size/1024} Kb')
     elif size/1024**3 < 1.0:
-        print(f'Size: {size/1024**2}Mb')
+        print(f'Size: {size/1024**2} Mb')
     elif size/1024**4 < 1.0:
         print(f'Size: {size/1024**3}Gb')
 
@@ -118,22 +118,22 @@ def main():
     # key = ('1'*4+'2'*4+'3'*4+'4'*4)*2
     key = np.array([204, 221, 238, 255, 136, 153, 170, 187, 68,  85, 102, 119, 0, 17, 34, 51, 243, 242, 241, 240, 247,
                     246, 245, 244, 251, 250, 249, 248, 255, 254, 253, 252], dtype=np.uint8)
-    # n = 55 000 000
-    # main_block = 'abcdefgh' * 1
-    main_block = "2TvºÜþ"
+    main_block = np.random.randint(0, 250, size=1048576, dtype=np.uint8)
     round_keys = iter_keys(key)
     encryption_keys = round_keys * 3 + round_keys[::-1]
     encryption_keys = np.array(encryption_keys, dtype=np.uint8)
     # decryption_keys = encryption_keys[::-1]
     # block = check_len_main_block(main_block)
-    block = np.array([16, 50, 84, 118, 152, 186, 220, 254]*131072, dtype=np.uint8)
+    block = main_block
     print_size(block.size)
     encrypt_block = block
     decrypt_block = block
+    print(f'Block: {block[:8]}')
     print("Start encrypt")
     start = perf_counter()
     main_encrypt(encryption_keys, block, encrypt_block)
     end = perf_counter()
+    # main_encrypt.parallel_diagnostics(level=4)
     print(f'Encrypt_block: {encrypt_block[:8]}')
     print(f'Time encrypt: {end - start} sec')
     print("Start decrypt")
@@ -141,11 +141,12 @@ def main():
     main_decrypt(encryption_keys, encrypt_block, decrypt_block)
     end = perf_counter()
     print(f'Time decrypt: {end - start} sec')
-    decrypt_str = [chr(decrypt_block[0])]
-    for i in range(1, len(main_block)):
-        decrypt_str += chr(decrypt_block[i])
-    decrypt_str = ''.join(decrypt_str)
-    if main_block == decrypt_str:
+    print(f'Decrypt_block: {decrypt_block[:8]}')
+    # decrypt_str = [chr(decrypt_block[0])]
+    # for i in range(1, len(main_block)):
+    #     decrypt_str += chr(decrypt_block[i])
+    # decrypt_str = ''.join(decrypt_str)
+    if main_block.all() == decrypt_block.all():
         print("Successful!")
 
 
