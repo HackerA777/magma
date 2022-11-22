@@ -1,7 +1,8 @@
 import numpy as np
 from time import perf_counter
-from tables import T
+from tables import T, Pi
 import numba
+from numba import cuda
 
 
 def print_size(size):
@@ -23,7 +24,10 @@ def iter_keys(keys):
 
 @numba.njit(numba.void(numba.uint8[:], numba.uint8[:], numba.uint8[:]), nogil=True, fastmath=True)
 def xor(a: np.uint8, b: np.uint8, c: np.uint8):
-    c[...] = a ^ b
+    a = a.view(np.uint32)
+    b = b.view(np.uint32)
+    c = c.view(np.uint32)
+    c[0] = a[0] ^ b[0]
 
 
 @numba.njit(numba.void(numba.uint8[:], numba.uint8[:], numba.uint8[:]), nogil=True, fastmath=True)
@@ -31,7 +35,7 @@ def add_32(a: np.uint8, b: np.uint8, c: np.uint8):
     a = a.view(np.uint32)
     b = b.view(np.uint32)
     c = c.view(np.uint32)
-    c[...] = a + b
+    c[0] = a[0] + b[0]
 
 
 @numba.njit(numba.void(numba.uint8[:], numba.uint8[:]), nogil=True)
@@ -119,6 +123,7 @@ def main():
     key = np.array([204, 221, 238, 255, 136, 153, 170, 187, 68,  85, 102, 119, 0, 17, 34, 51, 243, 242, 241, 240, 247,
                     246, 245, 244, 251, 250, 249, 248, 255, 254, 253, 252], dtype=np.uint8)
     main_block = np.random.randint(0, 250, size=1048576, dtype=np.uint8)
+    # block = np.array([16, 50, 84, 118, 152, 186, 220, 254] * 131072, dtype=np.uint8)
     round_keys = iter_keys(key)
     encryption_keys = round_keys * 3 + round_keys[::-1]
     encryption_keys = np.array(encryption_keys, dtype=np.uint8)
@@ -133,7 +138,6 @@ def main():
     start = perf_counter()
     main_encrypt(encryption_keys, block, encrypt_block)
     end = perf_counter()
-    # main_encrypt.parallel_diagnostics(level=4)
     print(f'Encrypt_block: {encrypt_block[:8]}')
     print(f'Time encrypt: {end - start} sec')
     print("Start decrypt")
