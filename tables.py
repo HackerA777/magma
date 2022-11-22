@@ -1,5 +1,6 @@
 import numpy as np
 import numba
+from numba import cuda
 
 
 # Pi = np.array([
@@ -25,10 +26,20 @@ Pi = np.array([
 ], np.uint8)
 
 
+# @cuda.jit(device=True)
 @numba.njit(numba.uint8(numba.int32, numba.uint8), nogil=True, fastmath=True)
 def T(i: np.int32, val: np.uint8):
     l = val & 0x0f
     h = (val & 0xf0) >> 4
     l = Pi[i*2, l]
     h = Pi[i*2+1, h]
+    return (h << 4) | l
+
+
+@cuda.jit(numba.uint8(numba.int32, numba.uint8, numba.uint8[:, :]), device=True)
+def T2(i: np.uint32, val: np.uint8, P_table: np.array):
+    l = val & 0x0f
+    h = (val & 0xf0) >> 4
+    l = P_table[i * 2, l]
+    h = P_table[i * 2 + 1, h]
     return (h << 4) | l
