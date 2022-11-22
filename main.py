@@ -1,8 +1,7 @@
 import numpy as np
 from time import perf_counter
-from tables import T, Pi
+from tables import T
 import numba
-from numba import cuda
 
 
 def print_size(size):
@@ -58,25 +57,32 @@ def magma_g(round_key, block, internal):
 def magma_G(round_key, block, out_block, t):
     l = block[:4]
     r = block[4:]
-    t[...] = r
+    for i in range(4):
+        t[i] = r[i]
     magma_g(round_key, l, t)
     xor(r, t, t)
-    r[...] = l
-    l[...] = t
-    out_block[:4] = l
-    out_block[4:] = r
+    for i in range(4):
+        r[i] = l[i]
+    for i in range(4):
+        l[i] = t[i]
+    for i in range(4):
+        out_block[i] = l[i]
+        out_block[i+4] = r[i]
 
 
 @numba.njit(numba.void(numba.uint8[:], numba.uint8[:], numba.uint8[:], numba.uint8[:]), nogil=True)
 def magma_G_Last(round_key, block, out_block, t):
     l = block[:4]
     r = block[4:]
-    t[...] = r
+    for i in range(4):
+        t[i] = r[i]
     magma_g(round_key, l, t)
     xor(r, t, t)
-    r[...] = t
-    out_block[:4] = l
-    out_block[4:] = r
+    for i in range(4):
+        r[i] = t[i]
+    for i in range(4):
+        out_block[i] = l[i]
+        out_block[i+4] = r[i]
 
 
 @numba.njit(numba.void(numba.uint8[:, :], numba.uint8[:], numba.uint8[:]), nogil=True)
@@ -130,6 +136,7 @@ def main():
     # decryption_keys = encryption_keys[::-1]
     # block = check_len_main_block(main_block)
     block = main_block
+    # main_block = block
     print_size(block.size)
     encrypt_block = block
     decrypt_block = block
