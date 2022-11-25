@@ -114,21 +114,32 @@ def check_len_main_block(block: str):
 
 @cuda.jit()
 def main_encrypt(encryption_keys, block, encrypt_block, table):
+    c_table = cuda.shared.array((8, 16), dtype=numba.uint8)
+    if cuda.threadIdx.x == 0:
+        for i in range(8):
+            for j in range(16):
+                c_table[i, j] = table[i, j]
+    cuda.syncthreads()
     for i in range(8*cuda.grid(1), len(block), 8*cuda.gridsize(1)):
-        encrypt(encryption_keys, block[i:i+8], encrypt_block[i:i+8], table)
+        encrypt(encryption_keys, block[i:i+8], encrypt_block[i:i+8], c_table)
 
 
 @cuda.jit()
 def main_decrypt(encryption_keys, encrypt_block, decrypt_block, table):
+    c_table = cuda.shared.array((8, 16), dtype=numba.uint8)
+    if cuda.threadIdx.x == 0:
+        for i in range(8):
+            for j in range(16):
+                c_table[i, j] = table[i, j]
     for i in range(8*cuda.grid(1), len(encrypt_block), 8*cuda.gridsize(1)):
-        decrypt(encryption_keys, encrypt_block[i:i+8], decrypt_block[i:i+8], table)
+        decrypt(encryption_keys, encrypt_block[i:i+8], decrypt_block[i:i+8], c_table)
 
 
 def main():
     # key = ('1'*4+'2'*4+'3'*4+'4'*4)*2
     key = np.array([204, 221, 238, 255, 136, 153, 170, 187, 68,  85, 102, 119, 0, 17, 34, 51, 243, 242, 241, 240, 247,
                     246, 245, 244, 251, 250, 249, 248, 255, 254, 253, 252], dtype=np.uint8)
-    main_block = np.random.randint(0, 250, size=1073741824, dtype=np.uint8)
+    main_block = np.random.randint(0, 250, size=1024**2*128, dtype=np.uint8)
     round_keys = iter_keys(key)
     encryption_keys = round_keys * 3 + round_keys[::-1]
     encryption_keys = np.array(encryption_keys, dtype=np.uint8)
