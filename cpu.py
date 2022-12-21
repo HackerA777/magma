@@ -142,17 +142,17 @@ def cpu(size: int):
     begin = time.time()
     main_encrypt(encryption_keys, block, encrypt_block)
     end = time.time()
-    work_time = end - begin
-    print(f'Time encrypting: {round(work_time, 4)} sec')
-    speed_encrypt = size / (work_time * 1024 ** 2)
+    work_time_enc = end - begin
+    print(f'Time encrypting: {round(work_time_enc, 4)} sec')
+    speed_encrypt = size / (work_time_enc * 1024 ** 2)
     print(f'Speed encrypting: {round(speed_encrypt, 4)} Mb/sec')
     begin = time.time()
     main_decrypt(encryption_keys, encrypt_block, decrypt_block)
     end = time.time()
-    work_time = end - begin
-    print(f'Time decrypting: {round(work_time, 4)} sec')
-    speed_decrypt = size / (work_time * 1024 ** 2)
+    work_time_dec = end - begin
+    print(f'Time decrypting: {round(work_time_dec, 4)} sec')
+    speed_decrypt = size / (work_time_dec * 1024 ** 2)
     print(f'Speed decrypting: {round(speed_decrypt, 4)} Mb/sec')
     if np.all(main_block == decrypt_block):
-        return speed_encrypt, speed_decrypt
-    return -1, -1
+        return speed_encrypt, speed_decrypt, work_time_enc, work_time_dec
+    return -1, -1, -1, -1

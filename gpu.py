@@ -159,10 +159,10 @@ def gpu(size: int):
     block = cuda.to_device(block)
     encryption_keys = cuda.to_device(encryption_keys)
     decrypt_block_cuda = cuda.to_device(decrypt_block)
-    main_encrypt[128, 128](encryption_keys, block[:8], encrypt_block_cuda[:8], P_table)
-    main_decrypt[128, 128](encryption_keys, encrypt_block_cuda[:8], decrypt_block_cuda[:8], P_table)
+    main_encrypt[256, 256](encryption_keys, block[:8], encrypt_block_cuda[:8], P_table)
+    main_decrypt[256, 256](encryption_keys, encrypt_block_cuda[:8], decrypt_block_cuda[:8], P_table)
     evtstart_enc.record()
-    main_encrypt[128, 128](encryption_keys, block, encrypt_block_cuda, P_table)
+    main_encrypt[256, 256](encryption_keys, block, encrypt_block_cuda, P_table)
     evtend_enc.record()
     evtend_enc.synchronize()
     time_ = float(cuda.event_elapsed_time(evtstart_enc, evtend_enc)) / 1000
@@ -174,7 +174,7 @@ def gpu(size: int):
     print(f'Speed encrypt: {round(speed_encrypt, 4)} Mb/sec')
     print("-" * 20)
     evtstart_dec.record()
-    main_decrypt[128, 128](encryption_keys, encrypt_block_cuda, decrypt_block_cuda, P_table)
+    main_decrypt[256, 256](encryption_keys, encrypt_block_cuda, decrypt_block_cuda, P_table)
     evtend_dec.record()
     evtend_dec.synchronize()
     time_ = float(cuda.event_elapsed_time(evtstart_dec, evtend_dec)) / 1000
@@ -182,5 +182,5 @@ def gpu(size: int):
     speed_decrypt = size / (time_ * 1024 ** 2)
     print(f'Speed decrypting: {round(speed_decrypt, 4)} Mb/sec')
     if np.all(main_block == decrypt_block):
-        return speed_encrypt, speed_decrypt
-    return -1, -1
+        return speed_encrypt, speed_decrypt, all_time
+    return -1, -1, -1

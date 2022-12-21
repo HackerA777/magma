@@ -51,21 +51,29 @@ def main():
         return
     if instrument == "CPU":
         if count > 1:
-            empirical_mean_enc = 0
-            empirical_mean_dec = 0
+            empirical_mean_speed_enc = 0
+            empirical_mean_speed_dec = 0
+            empirical_mean_time_enc = 0
+            empirical_mean_time_dec = 0
             for i in range(count):
                 print(f'\n\tTest number #{i}\n')
-                tmp1, tmp2 = cpu(size)
+                tmp1, tmp2, tmp3, tmp4 = cpu(size)
                 if tmp1 != -1 and tmp2 != -1:
                     print("Successful!")
-                    empirical_mean_enc += tmp1
-                    empirical_mean_dec += tmp2
+                    empirical_mean_speed_enc += tmp1
+                    empirical_mean_speed_dec += tmp2
+                    empirical_mean_time_enc += tmp3
+                    empirical_mean_time_dec += tmp4
                 else:
                     print("Oh no! Error!")
-            empirical_mean_enc = empirical_mean_enc / count
-            empirical_mean_dec = empirical_mean_dec / count
-            print(f'\nEmpirical_mean_enc = {round(empirical_mean_enc, 5)} Mb/sec\n'
-                  f'Empirical_mean_dec = {round(empirical_mean_dec, 5)} Mb/sec')
+            empirical_mean_speed_enc = empirical_mean_speed_enc / count
+            empirical_mean_speed_dec = empirical_mean_speed_dec / count
+            empirical_mean_time_enc = empirical_mean_time_enc / count
+            empirical_mean_time_dec = empirical_mean_time_dec / count
+            print(f'\nEmpirical_mean_speed_enc = {round(empirical_mean_speed_enc, 5)} Mb/sec\n'
+                  f'Empirical_mean_speed_dec = {round(empirical_mean_speed_dec, 5)} Mb/sec\n'
+                  f'Empirical_mean_time_enc = {round(empirical_mean_time_enc, 5)} sec\n'
+                  f'Empirical_mean_time_dec = {round(empirical_mean_time_dec, 5)} sec')
         elif count == 1:
             if cpu(size):
                 print("Successful!")
@@ -73,21 +81,25 @@ def main():
                 print("Oh no! Error!")
     elif instrument == "GPU":
         if count > 1:
-            empirical_mean_enc = 0
-            empirical_mean_dec = 0
+            empirical_mean_speed_enc = 0
+            empirical_mean_speed_dec = 0
+            empirical_mean_all_time = 0
             for i in range(count):
                 print(f'\n\tTest number #{i}\n')
-                tmp1, tmp2 = gpu(size)
+                tmp1, tmp2, tmp3 = gpu(size)
                 if tmp1 != -1 and tmp2 != -1:
                     print("Successful!")
-                    empirical_mean_enc += tmp1
-                    empirical_mean_dec += tmp2
+                    empirical_mean_speed_enc += tmp1
+                    empirical_mean_speed_dec += tmp2
+                    empirical_mean_all_time += tmp3
                 else:
                     print("Oh no! Error!")
-            empirical_mean_enc = empirical_mean_enc / count
-            empirical_mean_dec = empirical_mean_dec / count
-            print(f'\nEmpirical_mean_enc = {round(empirical_mean_enc, 5)} Mb/sec\n'
-                  f'Empirical_mean_dec = {round(empirical_mean_dec, 5)} Mb/sec')
+            empirical_mean_speed_enc = empirical_mean_speed_enc / count
+            empirical_mean_speed_dec = empirical_mean_speed_dec / count
+            empirical_mean_all_time = empirical_mean_all_time / count
+            print(f'\nEmpirical_mean_speed_enc = {round(empirical_mean_speed_enc, 5)} Mb/sec\n'
+                  f'Empirical_mean_speed_dec = {round(empirical_mean_speed_dec, 5)} Mb/sec\n'
+                  f'Empirical_mean_time_copying_and_encrypting = {round(empirical_mean_all_time, 5)} sec')
         elif count == 1:
             if gpu(size):
                 print("Successful!")
