@@ -103,15 +103,6 @@ def decrypt(round_keys, block: np.uint8, out_block: np.uint8, table):
     out_block[1] = r
 
 
-@numba.njit(parallel=True)
-def check_len_main_block(block: str):
-    for i in numba.prange(0, len(block)):
-        if len(block[i * 8:i * 8 + 8]) < 8:
-            while len(block[i:i + 8]) != 8:
-                block += '0'
-    return np.fromstring(block, np.uint8)
-
-
 @cuda.jit()
 def main_encrypt(encryption_keys, block, encrypt_block, table):  # uint8
     c_table = cuda.shared.array((8, 16), dtype=numba.uint8)

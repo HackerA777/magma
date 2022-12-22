@@ -36,7 +36,7 @@ def main():
                         dest='instrument')
     parser.add_argument('-c', type=int,
                         help="Количество повторений. После всех шифрований выводится "
-                             "эмперическая средняя скорость шифрования",
+                             "эмпирическая средняя скорость шифрования",
                         required=False, dest='count', default=1)
 
     args = parser.parse_args()
