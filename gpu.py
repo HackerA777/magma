@@ -23,7 +23,7 @@ Pi = np.array([
 
 
 @cuda.jit(numba.uint8(numba.int32, numba.uint8, numba.uint8[:, :]), device=True)
-def T2(i: np.int32, val: np.uint8, P_table: np.ndarray):
+def T(i: np.int32, val: np.uint8, P_table: np.ndarray):
     l = val & 0x0f
     h = (val & 0xf0) >> 4
     l = P_table[i * 2, l]
@@ -51,7 +51,7 @@ def set_byte(i, j, k):
 @cuda.jit(numba.uint32(numba.uint32, numba.uint8[:, :]), device=True)
 def magma_T(in_data: np.uint32, table):
     for i in range(4):
-        in_data = set_byte(in_data, i, T2(i, get_byte(in_data, i), table))
+        in_data = set_byte(in_data, i, T(i, get_byte(in_data, i), table))
     return in_data
 
 
